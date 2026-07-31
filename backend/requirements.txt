@@ -1,0 +1,22 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+websockets==14.2
+python-dotenv==1.0.1
+pydantic==2.10.6
+pydantic-settings==2.7.1
+aiosqlite==0.20.0
+httpx==0.28.1
+
+# LangChain & LangGraph
+langchain==0.3.14
+langchain-core==0.3.30
+langchain-community==0.3.14
+langchain-google-genai==2.0.8
+langchain-openai==0.3.1
+langgraph==0.2.62
+
+# Vector store
+faiss-cpu==1.9.0.post1
+
+# Embeddings
+google-generativeai==0.8.4
