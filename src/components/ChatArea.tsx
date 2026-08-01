@@ -31,6 +31,7 @@ interface ChatAreaProps {
   onOpenSearch: () => void;
   onAnswerMCQ?: (messageId: string, answer: MCQAnswer) => void;
   onAnswerFlow?: (messageId: string, flowAnswers: ClarificationAnswers) => void;
+  onOpenVoiceMode?: () => void;
   ollamaUrl?: string;
   ollamaModel?: string;
   onSelectOllamaModel?: (model: string) => void;
@@ -131,7 +132,7 @@ function formatMessageDate(timestamp: number): string {
 
 export default function ChatArea({
   chat, selectedModel, onSelectModel, onSend, onRegenerate, onEditUserMessage, onSwitchVariant, isStreaming, streamingContent,
-  sidebarOpen, onToggleSidebar, onNewChat, onStop, chatError, onOpenSearch, onAnswerMCQ, onAnswerFlow,
+  sidebarOpen, onToggleSidebar, onNewChat, onStop, chatError, onOpenSearch, onAnswerMCQ, onAnswerFlow, onOpenVoiceMode,
   ollamaUrl, ollamaModel, onSelectOllamaModel
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -461,6 +462,7 @@ export default function ChatArea({
               onStop={onStop} 
               hasMessages={hasMessages}
               chatId={chat ? chat.id : null}
+              onOpenVoiceMode={onOpenVoiceMode}
             />
           </>
         )}

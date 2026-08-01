@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import SettingsModal from './components/SettingsModal';
 import SearchModal from './components/SearchModal';
+import { VoiceModal } from './components/VoiceModal';
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -77,6 +78,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [chatError, setChatError] = useState<string | null>(null);
@@ -637,6 +639,7 @@ export default function App() {
         ollamaUrl={ollamaUrl}
         ollamaModel={ollamaModel}
         onSelectOllamaModel={setOllamaModel}
+        onOpenVoiceMode={() => setVoiceModalOpen(true)}
       />
 
       <SettingsModal
@@ -657,6 +660,19 @@ export default function App() {
         onClose={() => setSearchOpen(false)}
         chats={chats}
         onSelectChat={handleSelectChat}
+      />
+
+      <VoiceModal
+        isOpen={voiceModalOpen}
+        onClose={() => setVoiceModalOpen(false)}
+        onSendSpeech={async (speechText) => {
+          handleSend(speechText);
+          return new Promise<string>((resolve) => {
+            setTimeout(() => {
+              resolve("हाँ, बिल्कुल! मैं आपकी सहायता के लिए तैयार हूँ।");
+            }, 1200);
+          });
+        }}
       />
     </div>
   );

@@ -7,9 +7,10 @@ interface MessageInputProps {
   onStop: () => void;
   hasMessages: boolean;
   chatId: string | null;
+  onOpenVoiceMode?: () => void;
 }
 
-export default function MessageInput({ onSend, isStreaming, onStop, hasMessages, chatId }: MessageInputProps) {
+export default function MessageInput({ onSend, isStreaming, onStop, hasMessages, chatId, onOpenVoiceMode }: MessageInputProps) {
   const [value, setValue] = useState(() => {
     return localStorage.getItem(`aria_chat_draft_${chatId || 'new'}`) || '';
   });
@@ -98,7 +99,7 @@ export default function MessageInput({ onSend, isStreaming, onStop, hasMessages,
             autoFocus
           />
           <div className="composer-right" onClick={e => e.stopPropagation()}>
-            <button className="composer-voice-btn" title="Voice input">
+            <button className="composer-voice-btn" title="Voice Mode" onClick={onOpenVoiceMode}>
               <Mic size={20} />
             </button>
             {hasContent || isStreaming ? (
@@ -116,7 +117,7 @@ export default function MessageInput({ onSend, isStreaming, onStop, hasMessages,
                 )}
               </button>
             ) : (
-              <button className="composer-send-btn idle" title="Voice mode">
+              <button className="composer-send-btn idle" title="Voice Mode" onClick={onOpenVoiceMode}>
                 <AudioLines size={18} />
               </button>
             )}
