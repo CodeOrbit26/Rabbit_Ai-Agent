@@ -11,6 +11,7 @@ import ModelSelector from './ModelSelector';
 import MessageInput from './MessageInput';
 import { MCQCard } from './MCQCard';
 import { ClarificationFlowCard } from './ClarificationFlowCard';
+import { AIActivityIndicator } from './AIActivityIndicator';
 
 interface ChatAreaProps {
   chat: Chat | null;
@@ -416,6 +417,9 @@ export default function ChatArea({
                       <div className="message-content">
                         {(() => {
                           const parsed = parsePayloadFromContent(streamingContent);
+                          if (parsed.isPlanning) {
+                            return <AIActivityIndicator label={parsed.activityText || '✦ Preparing a few questions...'} />;
+                          }
                           return (
                             <>
                               {parsed.text && (
@@ -443,11 +447,7 @@ export default function ChatArea({
                   <div className="message message-assistant">
                     <div className="message-wrapper">
                       <div className="message-content">
-                        <div className="typing-indicator">
-                          <div className="typing-dot" />
-                          <div className="typing-dot" />
-                          <div className="typing-dot" />
-                        </div>
+                        <AIActivityIndicator label="✦ Understanding your request..." />
                       </div>
                     </div>
                   </div>
@@ -464,14 +464,20 @@ export default function ChatArea({
                 <div ref={messagesEndRef} />
               </div>
             </div>
-            <MessageInput 
-              key={chat ? chat.id : 'new'}
-              onSend={onSend} 
-              isStreaming={isStreaming} 
-              onStop={onStop} 
-              hasMessages={hasMessages}
-              chatId={chat ? chat.id : null}
-            />
+            {!chat?.messages.some(m => {
+              if (m.role !== 'assistant') return false;
+              const p = parsePayloadFromContent(m.content);
+              return p.clarificationFlow && !m.isFlowCompleted;
+            }) && (
+              <MessageInput 
+                key={chat ? chat.id : 'new'}
+                onSend={onSend} 
+                isStreaming={isStreaming} 
+                onStop={onStop} 
+                hasMessages={hasMessages}
+                chatId={chat ? chat.id : null}
+              />
+            )}
           </>
         )}
       </div>

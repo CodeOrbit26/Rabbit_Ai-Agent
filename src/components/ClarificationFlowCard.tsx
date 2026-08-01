@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Send, HelpCircle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, ChevronLeft, ChevronRight, Send, HelpCircle, Sparkles, Pencil } from 'lucide-react';
 import type { ClarificationFlow, ClarificationAnswers, FlowQuestionOption } from '../types';
 
 interface ClarificationFlowCardProps {
@@ -22,49 +22,57 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<ClarificationAnswers>(savedAnswers || {});
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const currentQ = questions[currentIndex] || questions[0];
   const isMulti = currentQ?.selection === 'multi' || currentQ?.selection === 'multiple';
 
-  const currentAnswer = currentQ ? answers[currentQ.id] : undefined;
-  const [selectedIds, setSelectedIds] = useState<string[]>(currentAnswer?.selectedLabels || []);
-  const [customText, setCustomText] = useState<string>(currentAnswer?.customInput || '');
-  const [showCustomInput, setShowCustomInput] = useState<boolean>(!!currentAnswer?.customInput);
+  const currentAns = currentQ ? answers[currentQ.id] : undefined;
+  const [selectedLabels, setSelectedLabels] = useState<string[]>(currentAns?.selectedLabels || []);
+  const [customText, setCustomText] = useState<string>(currentAns?.customInput || '');
+  const [showCustomInput, setShowCustomInput] = useState<boolean>(!!currentAns?.customInput);
+
+  // Sync state when step changes
+  useEffect(() => {
+    if (currentQ) {
+      const ans = answers[currentQ.id];
+      setSelectedLabels(ans?.selectedLabels || []);
+      setCustomText(ans?.customInput || '');
+      setShowCustomInput(!!ans?.customInput);
+    }
+  }, [currentIndex, currentQ, answers]);
 
   if (!currentQ || totalQuestions === 0) return null;
 
   const progressPercent = Math.round(((currentIndex + 1) / totalQuestions) * 100);
 
-  const saveCurrentAnswer = (newSelectedLabels: string[], newCustomText?: string) => {
-    const updatedAnswers: ClarificationAnswers = {
+  const saveCurrentAnswer = (labelsToSave: string[], textToSave?: string) => {
+    const updated: ClarificationAnswers = {
       ...answers,
       [currentQ.id]: {
         questionId: currentQ.id,
         questionText: currentQ.question,
-        selectedLabels: newSelectedLabels,
-        customInput: newCustomText,
+        selectedLabels: labelsToSave,
+        customInput: textToSave,
       },
     };
-    setAnswers(updatedAnswers);
-    return updatedAnswers;
+    setAnswers(updated);
+    return updated;
   };
 
-  const handleNextStep = (finalAnswers: ClarificationAnswers) => {
+  const advanceStep = (finalAnswers: ClarificationAnswers) => {
     if (currentIndex < totalQuestions - 1) {
-      const nextIdx = currentIndex + 1;
-      const nextQ = questions[nextIdx];
-      const nextAns = finalAnswers[nextQ.id];
-      setCurrentIndex(nextIdx);
-      setSelectedIds(nextAns?.selectedLabels || []);
-      setCustomText(nextAns?.customInput || '');
-      setShowCustomInput(!!nextAns?.customInput);
+      setCurrentIndex(prev => prev + 1);
+      setIsTransitioning(false);
     } else {
-      // Final submission of all collected answers together
-      if (onComplete && !isCompleted) {
+      // Final completion
+      setIsTransitioning(false);
+      setIsEditing(false);
+      if (onComplete) {
         const summaryParts: string[] = [];
         Object.values(finalAnswers).forEach(ans => {
-          const joined = ans.selectedLabels.join(', ');
-          summaryParts.push(`${ans.questionText}: **${joined}**`);
+          summaryParts.push(`${ans.questionText}: ${ans.selectedLabels.join(', ')}`);
         });
         const summaryText = summaryParts.join(' | ');
         onComplete(finalAnswers, summaryText);
@@ -72,64 +80,96 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
     }
   };
 
-  const handleOptionClick = (optLabel: string, optId: string) => {
-    if (disabled || isCompleted) return;
+  const handleSingleClick = (label: string) => {
+    if (disabled || isTransitioning || (isCompleted && !isEditing)) return;
 
-    if (isMulti) {
-      setSelectedIds(prev =>
-        prev.includes(optLabel) ? prev.filter(item => item !== optLabel) : [...prev, optLabel]
-      );
-    } else {
-      // Single select: immediate smooth step forward
-      const newAnswers = saveCurrentAnswer([optLabel], undefined);
-      handleNextStep(newAnswers);
-    }
+    setIsTransitioning(true);
+    setSelectedLabels([label]);
+    setShowCustomInput(false);
+
+    const updatedAnswers = saveCurrentAnswer([label], undefined);
+
+    // 180ms visual confirmation delay before step transition
+    setTimeout(() => {
+      advanceStep(updatedAnswers);
+    }, 180);
+  };
+
+  const handleMultiToggle = (label: string) => {
+    if (disabled || isTransitioning || (isCompleted && !isEditing)) return;
+
+    setSelectedLabels(prev =>
+      prev.includes(label) ? prev.filter(item => item !== label) : [...prev, label]
+    );
   };
 
   const handleCustomToggle = () => {
-    if (disabled || isCompleted) return;
+    if (disabled || isTransitioning || (isCompleted && !isEditing)) return;
     if (!isMulti) {
-      setSelectedIds([]);
+      setSelectedLabels([]);
     }
     setShowCustomInput(prev => !prev);
   };
 
   const handleMultiSubmit = () => {
-    if (disabled || isCompleted) return;
+    if (disabled || isTransitioning || (isCompleted && !isEditing)) return;
 
-    const finalLabels: string[] = [...selectedIds];
+    const finalLabels = [...selectedLabels];
     if (showCustomInput && customText.trim()) {
       finalLabels.push(`Other: ${customText.trim()}`);
     }
 
     if (finalLabels.length === 0) return;
 
-    const newAnswers = saveCurrentAnswer(finalLabels, showCustomInput ? customText.trim() : undefined);
-    handleNextStep(newAnswers);
+    setIsTransitioning(true);
+    const updatedAnswers = saveCurrentAnswer(finalLabels, showCustomInput ? customText.trim() : undefined);
+    advanceStep(updatedAnswers);
   };
 
-  const handlePreviousStep = () => {
-    if (currentIndex > 0) {
-      const prevIdx = currentIndex - 1;
-      const prevQ = questions[prevIdx];
-      const prevAns = answers[prevQ.id];
-      setCurrentIndex(prevIdx);
-      setSelectedIds(prevAns?.selectedLabels || []);
-      setCustomText(prevAns?.customInput || '');
-      setShowCustomInput(!!prevAns?.customInput);
+  const handlePrevious = () => {
+    if (currentIndex > 0 && !isTransitioning) {
+      setCurrentIndex(prev => prev - 1);
     }
   };
 
+  // Compact Summary View when completed
+  if (isCompleted && !isEditing) {
+    const choiceList = Object.values(answers)
+      .map(a => a.selectedLabels.join(', '))
+      .filter(Boolean);
+
+    return (
+      <div className="flow-compact-summary">
+        <div className="flow-summary-left">
+          <Sparkles size={13} className="flow-sparkle-icon" />
+          <span className="flow-summary-title">Your choices:</span>
+          <span className="flow-summary-chips">{choiceList.join(' · ')}</span>
+        </div>
+        <button
+          type="button"
+          className="flow-edit-btn"
+          onClick={() => {
+            setIsEditing(true);
+            setCurrentIndex(0);
+          }}
+        >
+          <Pencil size={12} />
+          <span>Edit choices</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className={`flow-card ${isCompleted ? 'flow-card-completed' : ''}`}>
-      {/* Header & Progress */}
+    <div className={`flow-card ${isTransitioning ? 'flow-card-transitioning' : ''}`}>
+      {/* Header & Progress Bar */}
       <div className="flow-card-header">
         <div className="flow-step-info">
-          <span className="flow-step-badge">
-            <Sparkles size={13} />
-            Question {currentIndex + 1} of {totalQuestions}
+          <span className="flow-step-text">
+            {currentIndex + 1} of {totalQuestions}
           </span>
           {currentQ.subtitle && <span className="flow-subtitle">{currentQ.subtitle}</span>}
+          <span className="flow-percent-text">{progressPercent}%</span>
         </div>
         <div className="flow-progress-bar-container">
           <div className="flow-progress-bar-fill" style={{ width: `${progressPercent}%` }} />
@@ -138,7 +178,7 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
 
       {/* Question Title */}
       <div className="flow-question-title">
-        <HelpCircle size={18} className="flow-q-icon" />
+        <HelpCircle size={16} className="flow-q-icon" />
         <span>{currentQ.question}</span>
         {isMulti && <span className="flow-multi-tag">Select all that apply</span>}
       </div>
@@ -148,18 +188,24 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
         {currentQ.options.map((opt, idx) => {
           const optLabel = typeof opt === 'string' ? opt : (opt as FlowQuestionOption).label;
           const optId = typeof opt === 'string' ? `opt_${idx}` : (opt as FlowQuestionOption).id;
-          const isSelected = selectedIds.includes(optLabel);
+          const isSelected = selectedLabels.includes(optLabel);
 
           return (
             <button
               key={optId}
               type="button"
               className={`flow-option-btn ${isSelected ? 'selected' : ''}`}
-              disabled={disabled || isCompleted}
-              onClick={() => handleOptionClick(optLabel, optId)}
+              disabled={disabled || isTransitioning}
+              onClick={() => {
+                if (isMulti) {
+                  handleMultiToggle(optLabel);
+                } else {
+                  handleSingleClick(optLabel);
+                }
+              }}
             >
               <div className={`flow-checkbox ${isMulti ? 'checkbox-multi' : 'checkbox-single'}`}>
-                {isSelected && <Check size={13} className="check-icon" />}
+                {isSelected && <Check size={12} className="check-icon" />}
               </div>
               <span className="flow-option-label">{optLabel}</span>
             </button>
@@ -170,27 +216,27 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
           <button
             type="button"
             className={`flow-option-btn ${showCustomInput ? 'selected' : ''}`}
-            disabled={disabled || isCompleted}
+            disabled={disabled || isTransitioning}
             onClick={handleCustomToggle}
           >
             <div className={`flow-checkbox ${isMulti ? 'checkbox-multi' : 'checkbox-single'}`}>
-              {showCustomInput && <Check size={13} className="check-icon" />}
+              {showCustomInput && <Check size={12} className="check-icon" />}
             </div>
             <span className="flow-option-label">Other / Custom Answer</span>
           </button>
         )}
       </div>
 
-      {/* Custom Input Field */}
-      {showCustomInput && !isCompleted && (
+      {/* Inline Custom Input */}
+      {showCustomInput && (
         <div className="flow-custom-box">
           <input
             type="text"
             className="flow-custom-input"
-            placeholder="Type your answer..."
+            placeholder="Tell me what you have in mind..."
             value={customText}
             onChange={e => setCustomText(e.target.value)}
-            disabled={disabled || isCompleted}
+            disabled={disabled || isTransitioning}
             onKeyDown={e => {
               if (e.key === 'Enter' && customText.trim()) {
                 handleMultiSubmit();
@@ -200,52 +246,32 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
         </div>
       )}
 
-      {/* Navigation Controls */}
-      {!isCompleted && (
-        <div className="flow-footer">
-          {currentIndex > 0 ? (
-            <button
-              type="button"
-              className="flow-prev-btn"
-              onClick={handlePreviousStep}
-              disabled={disabled}
-            >
-              <ChevronLeft size={15} />
-              <span>Previous</span>
-            </button>
-          ) : <div />}
+      {/* Footer Navigation */}
+      <div className="flow-footer">
+        {currentIndex > 0 ? (
+          <button
+            type="button"
+            className="flow-prev-btn"
+            onClick={handlePrevious}
+            disabled={disabled || isTransitioning}
+          >
+            <ChevronLeft size={14} />
+            <span>Previous</span>
+          </button>
+        ) : <div />}
 
-          {(isMulti || showCustomInput) && (
-            <button
-              type="button"
-              className="flow-next-btn"
-              disabled={disabled || (selectedIds.length === 0 && !customText.trim())}
-              onClick={handleMultiSubmit}
-            >
-              <span>{currentIndex === totalQuestions - 1 ? 'Complete & Submit' : 'Continue'}</span>
-              {currentIndex === totalQuestions - 1 ? <Send size={14} /> : <ChevronRight size={15} />}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Completed Summary View */}
-      {isCompleted && (
-        <div className="flow-completed-summary">
-          <div className="flow-completed-badge">
-            <Check size={14} />
-            <span>Clarification Completed</span>
-          </div>
-          <div className="flow-summary-grid">
-            {Object.values(answers).map((ans, i) => (
-              <div key={i} className="flow-summary-item">
-                <span className="flow-summary-q">{ans.questionText}:</span>
-                <span className="flow-summary-a">{ans.selectedLabels.join(', ')}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        {(isMulti || showCustomInput) && (
+          <button
+            type="button"
+            className="flow-next-btn"
+            disabled={disabled || isTransitioning || (selectedLabels.length === 0 && !customText.trim())}
+            onClick={handleMultiSubmit}
+          >
+            <span>{currentIndex === totalQuestions - 1 ? 'Submit Answers' : 'Continue'}</span>
+            {currentIndex === totalQuestions - 1 ? <Send size={13} /> : <ChevronRight size={14} />}
+          </button>
+        )}
+      </div>
     </div>
   );
 };

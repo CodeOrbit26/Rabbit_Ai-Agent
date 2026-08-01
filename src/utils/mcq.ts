@@ -4,6 +4,8 @@ export interface ParsedPayloadResult {
   text: string;
   mcqQuestion: MCQQuestion | null;
   clarificationFlow: ClarificationFlow | null;
+  isPlanning: boolean;
+  activityText?: string;
 }
 
 /**
@@ -36,11 +38,18 @@ export function normalizeFlowQuestion(q: any, idx: number): FlowQuestion {
 
 /**
  * Parses assistant message content to detect and extract embedded MCQ or ClarificationFlow JSON blocks.
+ * Filters out raw JSON during streaming so users never see unparsed JSON / HTML code blocks.
  */
 export function parsePayloadFromContent(content: string): ParsedPayloadResult {
-  if (!content) return { text: '', mcqQuestion: null, clarificationFlow: null };
+  if (!content) {
+    return { text: '', mcqQuestion: null, clarificationFlow: null, isPlanning: false };
+  }
 
-  // 1. Try matching ```json { ... } ``` code blocks
+  // Detect if streaming is currently outputting a JSON block
+  const hasJsonStart = /```(?:json)?\s*\{\s*"type"\s*:\s*"(?:clarification_flow|question)"/i.test(content) ||
+                       /\{\s*"type"\s*:\s*"(?:clarification_flow|question)"/i.test(content);
+
+  // 1. Match complete ```json { ... } ``` code blocks
   const jsonFenceRegex = /```(?:json)?\s*(\{\s*"type"\s*:\s*"(?:clarification_flow|question)"[\s\S]*?\})\s*```/i;
   const fenceMatch = content.match(jsonFenceRegex);
 
@@ -54,17 +63,17 @@ export function parsePayloadFromContent(content: string): ParsedPayloadResult {
           title: parsed.title,
           questions: parsed.questions.map((q: any, idx: number) => normalizeFlowQuestion(q, idx)),
         };
-        return { text, mcqQuestion: null, clarificationFlow: flow };
+        return { text, mcqQuestion: null, clarificationFlow: flow, isPlanning: false };
       } else if (parsed && parsed.type === 'question' && Array.isArray(parsed.options)) {
         const text = content.replace(fenceMatch[0], '').trim();
-        return { text, mcqQuestion: parsed as MCQQuestion, clarificationFlow: null };
+        return { text, mcqQuestion: parsed as MCQQuestion, clarificationFlow: null, isPlanning: false };
       }
     } catch {
-      // Ignore JSON parse errors
+      // Incomplete JSON
     }
   }
 
-  // 2. Try matching raw JSON object containing "type": "clarification_flow" or "type": "question"
+  // 2. Match complete raw JSON object
   const rawJsonRegex = /(\{\s*"type"\s*:\s*"(?:clarification_flow|question)"[\s\S]*?\})/;
   const rawMatch = content.match(rawJsonRegex);
 
@@ -78,17 +87,30 @@ export function parsePayloadFromContent(content: string): ParsedPayloadResult {
           title: parsed.title,
           questions: parsed.questions.map((q: any, idx: number) => normalizeFlowQuestion(q, idx)),
         };
-        return { text, mcqQuestion: null, clarificationFlow: flow };
+        return { text, mcqQuestion: null, clarificationFlow: flow, isPlanning: false };
       } else if (parsed && parsed.type === 'question' && Array.isArray(parsed.options)) {
         const text = content.replace(rawMatch[1], '').trim();
-        return { text, mcqQuestion: parsed as MCQQuestion, clarificationFlow: null };
+        return { text, mcqQuestion: parsed as MCQQuestion, clarificationFlow: null, isPlanning: false };
       }
     } catch {
-      // Ignore parse errors
+      // Incomplete JSON
     }
   }
 
-  return { text: content, mcqQuestion: null, clarificationFlow: null };
+  // 3. Mid-stream JSON detection: suppress raw JSON output & return planning status
+  if (hasJsonStart) {
+    // Strip the trailing JSON fragment from text output
+    const cleanText = content.replace(/```(?:json)?[\s\S]*$/i, '').replace(/\{\s*"type"\s*:[\s\S]*$/i, '').trim();
+    return {
+      text: cleanText,
+      mcqQuestion: null,
+      clarificationFlow: null,
+      isPlanning: true,
+      activityText: '✦ Figuring out what details are needed...',
+    };
+  }
+
+  return { text: content, mcqQuestion: null, clarificationFlow: null, isPlanning: false };
 }
 
 // Backward compatibility alias
