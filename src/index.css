@@ -2424,15 +2424,23 @@ html[data-theme="dark"] .mcq-card {
 
 /* ===== CLARIFICATION FLOW CARD & COMPACT SUMMARY ===== */
 .flow-compact-summary {
+  position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   margin: 10px 0;
-  border-radius: 14px;
-  background: rgba(59, 130, 246, 0.06);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.07);
   border: 1px solid rgba(59, 130, 246, 0.2);
+  animation: summaryEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes summaryEnter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .flow-summary-left {
@@ -2442,8 +2450,15 @@ html[data-theme="dark"] .mcq-card {
   overflow: hidden;
 }
 
-.flow-sparkle-icon {
-  color: var(--accent-color, #3b82f6);
+.flow-check-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-color, #3b82f6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -2462,7 +2477,14 @@ html[data-theme="dark"] .mcq-card {
   text-overflow: ellipsis;
 }
 
-.flow-edit-btn {
+.flow-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.flow-expand-btn, .flow-edit-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -2473,41 +2495,99 @@ html[data-theme="dark"] .mcq-card {
   color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
-.flow-edit-btn:hover {
+.flow-expand-btn:hover, .flow-edit-btn:hover {
   background: rgba(59, 130, 246, 0.15);
   color: var(--accent-color, #3b82f6);
 }
 
+.flow-detail-drawer {
+  width: 100%;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-detail-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detail-q {
+  color: var(--text-secondary);
+}
+
+.detail-a {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* FLOW CARD MAIN CONTAINER */
 .flow-card {
-  margin: 14px 0;
-  max-width: 640px;
-  padding: 18px 20px;
+  margin: 12px 0;
+  max-width: 580px;
+  padding: 16px 18px;
   background: var(--surface-card, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  animation: flowCardFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
-@keyframes flowCardFadeIn {
+.flow-card-entering {
+  animation: cardEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardEnter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-.flow-card-transitioning {
-  opacity: 0.7;
-  pointer-events: none;
+.flow-card-completing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.flow-completing-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent-color, #3b82f6);
+}
+
+.completing-check-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-color, #3b82f6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: popCheck 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes popCheck {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 html[data-theme="dark"] .flow-card {
@@ -2516,7 +2596,7 @@ html[data-theme="dark"] .flow-card {
 }
 
 .flow-card-header {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .flow-step-info {
@@ -2549,40 +2629,65 @@ html[data-theme="dark"] .flow-card {
   height: 100%;
   background: var(--accent-color, #3b82f6);
   border-radius: 3px;
-  transition: width 0.25s ease;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* INNER QUESTION CONTENT SLIDES */
+.flow-question-content {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.flow-question-content.slide-next {
+  animation: slideNext 0.22s ease-out forwards;
+}
+
+.flow-question-content.slide-prev {
+  animation: slidePrev 0.22s ease-out forwards;
+}
+
+@keyframes slideNext {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slidePrev {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .flow-question-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+  line-height: 1.4;
 }
 
-.flow-q-icon {
+.flow-q-sparkle {
   color: var(--accent-color, #3b82f6);
+  flex-shrink: 0;
 }
 
 .flow-options-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 7px;
+  margin-bottom: 12px;
 }
 
 .flow-option-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 16px;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
   background: var(--surface-button, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.09));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -2590,28 +2695,37 @@ html[data-theme="dark"] .flow-card {
   outline: none;
 }
 
-/* Distinct Keyboard Focus vs Selected states */
+/* Hover Elevation Micro-Interaction */
+.flow-option-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--accent-color, #3b82f6);
+  transform: translateY(-1px);
+}
+
+/* Active Click Scale Micro-Interaction */
+.flow-option-btn:active:not(:disabled) {
+  transform: scale(0.995);
+}
+
+/* Focus Ring */
 .flow-option-btn:focus-visible {
   outline: 2px solid rgba(59, 130, 246, 0.5);
   outline-offset: 1px;
 }
 
-.flow-option-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.08);
-  border-color: var(--accent-color, #3b82f6);
-}
-
+/* Selected State */
 .flow-option-btn.selected {
-  background: rgba(59, 130, 246, 0.15) !important;
+  background: rgba(59, 130, 246, 0.14) !important;
   border-color: var(--accent-color, #3b82f6) !important;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.18);
+  font-weight: 600;
 }
 
 .flow-checkbox {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
-  border: 2px solid var(--text-tertiary, rgba(255, 255, 255, 0.3));
+  border: 1.5px solid var(--text-tertiary, rgba(255, 255, 255, 0.3));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2619,7 +2733,7 @@ html[data-theme="dark"] .flow-card {
 }
 
 .checkbox-multi {
-  border-radius: 5px;
+  border-radius: 4px;
 }
 
 .flow-option-btn.selected .flow-checkbox {
@@ -2628,17 +2742,17 @@ html[data-theme="dark"] .flow-card {
 }
 
 .flow-custom-box {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .flow-custom-input {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
   background: var(--input-bg, rgba(0, 0, 0, 0.25));
   border: 1px solid var(--accent-color, #3b82f6);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13.5px;
   outline: none;
 }
 
@@ -2646,7 +2760,7 @@ html[data-theme="dark"] .flow-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 

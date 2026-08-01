@@ -46,6 +46,15 @@ export interface ClarificationAnswers {
   };
 }
 
+export type ClarificationLifecycle =
+  | 'pending'
+  | 'entering'
+  | 'active'
+  | 'transitioning'
+  | 'completing'
+  | 'completed'
+  | 'editing';
+
 export interface MessageVariant {
   content: string;
   timestamp: number;
