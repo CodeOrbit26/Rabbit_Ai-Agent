@@ -1,18 +1,14 @@
-import type { ModelId } from '../types';
-
-export type VoiceState =
+export type VoiceVisualState =
   | 'connecting'
-  | 'idle'
   | 'listening'
   | 'user_speaking'
-  | 'processing'
+  | 'thinking'
   | 'assistant_speaking'
   | 'muted'
-  | 'error'
-  | 'ended';
+  | 'error';
 
 export interface VoiceEngineCallbacks {
-  onStateChange: (state: VoiceState) => void;
+  onStateChange: (state: VoiceVisualState) => void;
   onUserTranscript: (text: string, isFinal: boolean) => void;
   onAssistantTranscript: (text: string) => void;
   onAmplitudeChange: (inputLevel: number, outputLevel: number) => void;
@@ -21,23 +17,25 @@ export interface VoiceEngineCallbacks {
 }
 
 export class VoiceEngine {
-  private state: VoiceState = 'connecting';
+  private state: VoiceVisualState = 'connecting';
   private callbacks: VoiceEngineCallbacks;
 
   // Web Speech Recognition
   private recognition: any = null;
   private isRecognizing: boolean = false;
 
-  // Audio Context for amplitude analysis
+  // Web Audio API
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
-  private analyser: AnalyserNode | null = null;
+  private inputAnalyser: AnalyserNode | null = null;
   private animFrameId: number | null = null;
 
   // Speech Synthesis
   private synth: SpeechSynthesis | null = null;
   private currentVoice: SpeechSynthesisVoice | null = null;
   private isMuted: boolean = false;
+  private ttsQueue: string[] = [];
+  private isTTSSpeaking: boolean = false;
 
   constructor(callbacks: VoiceEngineCallbacks) {
     this.callbacks = callbacks;
@@ -49,47 +47,57 @@ export class VoiceEngine {
 
   private initVoices() {
     if (!this.synth) return;
-    const updateVoice = () => {
+    const loadVoice = () => {
       const voices = this.synth?.getVoices() || [];
-      // Prefer Indian Hindi voice, fall back to Indian English or any Hindi
-      const hiVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('hi-IN')) ||
-                      voices.find(v => v.lang.includes('en-IN') || v.name.includes('India')) ||
-                      voices[0];
+      // Explicit Hindi & Indian voice selection priority
+      const hiVoice =
+        voices.find(v => v.lang === 'hi-IN' || v.name.includes('Google हिंदी') || v.name.includes('Hindi')) ||
+        voices.find(v => v.lang.includes('hi')) ||
+        voices.find(v => v.lang === 'en-IN' || v.name.includes('India')) ||
+        voices[0];
       this.currentVoice = hiVoice || null;
     };
 
-    updateVoice();
+    loadVoice();
     if (this.synth.onvoiceschanged !== undefined) {
-      this.synth.onvoiceschanged = updateVoice;
+      this.synth.onvoiceschanged = loadVoice;
     }
   }
 
   public async start() {
     this.setState('connecting');
-    try {
-      // 1. Request microphone access
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // 2. Setup AudioContext Analyser
+    try {
+      // 1. Request microphone access with Web Audio constraints
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      // 2. Audio Context Analyser for REAL Audio-Reactive Orb
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       this.audioContext = new AudioCtx();
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 256;
-      source.connect(this.analyser);
+      this.inputAnalyser = this.audioContext.createAnalyser();
+      this.inputAnalyser.fftSize = 256;
+      this.inputAnalyser.smoothingTimeConstant = 0.8;
+      source.connect(this.inputAnalyser);
 
       this.startAmplitudeLoop();
 
       // 3. Setup Web Speech Recognition
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        throw new Error('Web Speech Recognition is not supported in this browser.');
+        throw new Error('Speech Recognition is not supported in this browser environment.');
       }
 
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = 'hi-IN'; // Default Hindi / Indian accent recognition
+      this.recognition.lang = 'hi-IN';
 
       this.recognition.onstart = () => {
         this.isRecognizing = true;
@@ -109,7 +117,7 @@ export class VoiceEngine {
           }
         }
 
-        // Barge-in: Interrupt assistant if speaking when user starts talking
+        // BARGE-IN INTERRUPTION: If AI is speaking and user starts talking, stop AI audio!
         if ((interimText.trim() || finalText.trim()) && this.state === 'assistant_speaking') {
           this.stopSpeaking();
           this.setState('listening');
@@ -122,8 +130,8 @@ export class VoiceEngine {
 
         if (finalText.trim()) {
           this.callbacks.onUserTranscript(finalText.trim(), true);
+          this.setState('thinking');
           this.callbacks.onUserFinalSpeech(finalText.trim());
-          this.setState('processing');
         }
       };
 
@@ -135,7 +143,6 @@ export class VoiceEngine {
 
       this.recognition.onend = () => {
         this.isRecognizing = false;
-        // Auto restart if still in voice mode and not processing/speaking
         if (this.state === 'listening' || this.state === 'user_speaking') {
           try {
             this.recognition.start();
@@ -147,36 +154,36 @@ export class VoiceEngine {
     } catch (err: any) {
       console.error('VoiceEngine start error:', err);
       this.setState('error');
-      this.callbacks.onError(err.message || 'Could not access microphone.');
+      this.callbacks.onError(err.message || 'Microphone access is required for voice conversations.');
     }
   }
 
   private startAmplitudeLoop() {
-    const dataArray = new Uint8Array(this.analyser?.frequencyBinCount || 128);
+    const dataArray = new Uint8Array(this.inputAnalyser?.frequencyBinCount || 128);
 
-    const checkVolume = () => {
-      if (!this.analyser) return;
-      this.analyser.getByteFrequencyData(dataArray);
+    const updateAmplitude = () => {
+      if (this.inputAnalyser) {
+        this.inputAnalyser.getByteFrequencyData(dataArray);
 
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i];
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalizedInput = Math.min(1, avg / 80);
+
+        const normalizedOutput = this.state === 'assistant_speaking' ? 0.35 + Math.sin(Date.now() / 120) * 0.3 : 0;
+
+        this.callbacks.onAmplitudeChange(normalizedInput, normalizedOutput);
       }
-      const avg = sum / dataArray.length;
-      const normalizedInput = Math.min(1, avg / 100);
 
-      // Output level simulated during TTS speaking
-      const normalizedOutput = this.state === 'assistant_speaking' ? 0.4 + Math.random() * 0.4 : 0;
-
-      this.callbacks.onAmplitudeChange(normalizedInput, normalizedOutput);
-
-      this.animFrameId = requestAnimationFrame(checkVolume);
+      this.animFrameId = requestAnimationFrame(updateAmplitude);
     };
 
-    checkVolume();
+    updateAmplitude();
   }
 
-  public speak(text: string, onEnd?: () => void) {
+  public speakPhrase(text: string, onEnd?: () => void) {
     if (!this.synth || this.isMuted) {
       if (onEnd) onEnd();
       return;
@@ -185,7 +192,6 @@ export class VoiceEngine {
     this.stopSpeaking();
     this.setState('assistant_speaking');
 
-    // Clean markdown symbols for natural TTS speech
     const cleanText = text
       .replace(/\*+/g, '')
       .replace(/#+/g, '')
@@ -194,12 +200,13 @@ export class VoiceEngine {
       .trim();
 
     if (!cleanText) {
+      this.setState('listening');
       if (onEnd) onEnd();
       return;
     }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.0;
+    utterance.rate = 1.05;
     utterance.pitch = 1.0;
     utterance.lang = 'hi-IN';
 
@@ -213,7 +220,7 @@ export class VoiceEngine {
     };
 
     utterance.onerror = (e) => {
-      console.warn('TTS error:', e);
+      console.warn('TTS synthesis error:', e);
       this.setState('listening');
       if (onEnd) onEnd();
     };
@@ -222,6 +229,8 @@ export class VoiceEngine {
   }
 
   public stopSpeaking() {
+    this.ttsQueue = [];
+    this.isTTSSpeaking = false;
     if (this.synth) {
       this.synth.cancel();
     }
@@ -238,14 +247,12 @@ export class VoiceEngine {
     return this.isMuted;
   }
 
-  public setState(newState: VoiceState) {
+  public setState(newState: VoiceVisualState) {
     this.state = newState;
     this.callbacks.onStateChange(newState);
   }
 
   public stop() {
-    this.setState('ended');
-
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;

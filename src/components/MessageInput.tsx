@@ -99,11 +99,18 @@ export default function MessageInput({ onSend, isStreaming, onStop, hasMessages,
             autoFocus
           />
           <div className="composer-right" onClick={e => e.stopPropagation()}>
-            <button className="composer-voice-btn" title="Voice Mode" onClick={onOpenVoiceMode}>
+            <button 
+              type="button" 
+              className="composer-voice-btn" 
+              title="Voice Mode" 
+              onPointerDown={e => { e.preventDefault(); if (onOpenVoiceMode) onOpenVoiceMode(); }}
+              onClick={onOpenVoiceMode}
+            >
               <Mic size={20} />
             </button>
             {hasContent || isStreaming ? (
               <button
+                type="button"
                 className="composer-send-btn"
                 onClick={handleSend}
                 title={isStreaming ? 'Stop generating' : 'Send message'}
@@ -117,7 +124,13 @@ export default function MessageInput({ onSend, isStreaming, onStop, hasMessages,
                 )}
               </button>
             ) : (
-              <button className="composer-send-btn idle" title="Voice Mode" onClick={onOpenVoiceMode}>
+              <button 
+                type="button" 
+                className="composer-send-btn idle" 
+                title="Voice Mode" 
+                onPointerDown={e => { e.preventDefault(); if (onOpenVoiceMode) onOpenVoiceMode(); }}
+                onClick={onOpenVoiceMode}
+              >
                 <AudioLines size={18} />
               </button>
             )}
