@@ -247,31 +247,33 @@ export const ClarificationFlowCard: React.FC<ClarificationFlowCardProps> = ({
       )}
 
       {/* Footer Navigation */}
-      <div className="flow-footer">
-        {currentIndex > 0 ? (
-          <button
-            type="button"
-            className="flow-prev-btn"
-            onClick={handlePrevious}
-            disabled={disabled || isTransitioning}
-          >
-            <ChevronLeft size={14} />
-            <span>Previous</span>
-          </button>
-        ) : <div />}
+      {(currentIndex > 0 || isMulti || showCustomInput) && (
+        <div className="flow-footer">
+          {currentIndex > 0 ? (
+            <button
+              type="button"
+              className="flow-prev-btn"
+              onClick={handlePrevious}
+              disabled={disabled || isTransitioning}
+            >
+              <ChevronLeft size={14} />
+              <span>Previous</span>
+            </button>
+          ) : <div />}
 
-        {(isMulti || showCustomInput) && (
-          <button
-            type="button"
-            className="flow-next-btn"
-            disabled={disabled || isTransitioning || (selectedLabels.length === 0 && !customText.trim())}
-            onClick={handleMultiSubmit}
-          >
-            <span>{currentIndex === totalQuestions - 1 ? 'Submit Answers' : 'Continue'}</span>
-            {currentIndex === totalQuestions - 1 ? <Send size={13} /> : <ChevronRight size={14} />}
-          </button>
-        )}
-      </div>
+          {(isMulti || showCustomInput) && (
+            <button
+              type="button"
+              className="flow-next-btn"
+              disabled={disabled || isTransitioning || (selectedLabels.length === 0 && !customText.trim())}
+              onClick={handleMultiSubmit}
+            >
+              <span>{currentIndex === totalQuestions - 1 ? 'Submit Answers' : 'Continue'}</span>
+              {currentIndex === totalQuestions - 1 ? <Send size={13} /> : <ChevronRight size={14} />}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -421,20 +421,10 @@ export default function ChatArea({
                             return <AIActivityIndicator label={parsed.activityText || '✦ Preparing a few questions...'} />;
                           }
                           return (
-                            <>
-                              {parsed.text && (
-                                <div className="message-text">
-                                  <span dangerouslySetInnerHTML={{ __html: renderMarkdown(parsed.text) }} />
-                                  <span className="streaming-cursor" />
-                                </div>
-                              )}
-                              {parsed.clarificationFlow && (
-                                <ClarificationFlowCard flow={parsed.clarificationFlow} disabled={true} />
-                              )}
-                              {parsed.mcqQuestion && (
-                                <MCQCard question={parsed.mcqQuestion} disabled={true} />
-                              )}
-                            </>
+                            <div className="message-text">
+                              <span dangerouslySetInnerHTML={{ __html: renderMarkdown(parsed.text || streamingContent) }} />
+                              <span className="streaming-cursor" />
+                            </div>
                           );
                         })()}
                       </div>
@@ -464,20 +454,14 @@ export default function ChatArea({
                 <div ref={messagesEndRef} />
               </div>
             </div>
-            {!chat?.messages.some(m => {
-              if (m.role !== 'assistant') return false;
-              const p = parsePayloadFromContent(m.content);
-              return p.clarificationFlow && !m.isFlowCompleted;
-            }) && (
-              <MessageInput 
-                key={chat ? chat.id : 'new'}
-                onSend={onSend} 
-                isStreaming={isStreaming} 
-                onStop={onStop} 
-                hasMessages={hasMessages}
-                chatId={chat ? chat.id : null}
-              />
-            )}
+            <MessageInput 
+              key={chat ? chat.id : 'new'}
+              onSend={onSend} 
+              isStreaming={isStreaming} 
+              onStop={onStop} 
+              hasMessages={hasMessages}
+              chatId={chat ? chat.id : null}
+            />
           </>
         )}
       </div>
