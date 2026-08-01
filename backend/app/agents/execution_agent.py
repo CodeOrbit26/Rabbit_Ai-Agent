@@ -1,6 +1,7 @@
-"""Execution Agent — runs the main LLM call with true token-by-token streaming."""
+"""Execution Agent — runs the main LLM call with true token-by-token smooth streaming."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -27,7 +28,6 @@ async def _stream_gemini_direct(
 
     client = genai.Client(api_key=api_key)
 
-    # Convert LangChain messages to GenAI format
     contents = []
     system_instruction = None
 
@@ -44,17 +44,34 @@ async def _stream_gemini_direct(
         temperature=0.7,
     )
 
-    full_response = ""
-    async for chunk in client.aio.models.generate_content_stream(
-        model=model_name,
-        contents=contents,
-        config=config,
-    ):
-        if chunk.text:
-            full_response += chunk.text
-            await streaming_callback(chunk.text)
+    models_to_try = [model_name]
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash"]:
+        if fallback not in models_to_try:
+            models_to_try.append(fallback)
 
-    return full_response
+    last_error = None
+    for m in models_to_try:
+        try:
+            full_response = ""
+            # Must await generate_content_stream before async iterating
+            response_stream = await client.aio.models.generate_content_stream(
+                model=m,
+                contents=contents,
+                config=config,
+            )
+            async for chunk in response_stream:
+                if chunk.text:
+                    full_response += chunk.text
+                    await streaming_callback(chunk.text)
+            if full_response:
+                return full_response
+        except Exception as e:
+            last_error = e
+            logger.warning("Model %s failed: %s, trying fallback...", m, e)
+
+    if last_error:
+        raise last_error
+    raise RuntimeError("All Gemini models failed")
 
 
 class ExecutionAgent(BaseAgent):
@@ -70,13 +87,13 @@ class ExecutionAgent(BaseAgent):
         # Build system prompt
         system_text = SYSTEM_PROMPT
         if enriched_context:
-            trimmed_ctx = enriched_context[:500]
+            trimmed_ctx = enriched_context[:300]
             system_text += f"\n\nContext:\n{trimmed_ctx}"
 
         messages = [SystemMessage(content=system_text)]
 
-        # Only load last 6 messages (3 turns)
-        history = await chat_memory.get_langchain_messages(session_id, limit=6)
+        # Only load last 4 messages (2 turns) for fast prompt processing
+        history = await chat_memory.get_langchain_messages(session_id, limit=4)
         for msg in history:
             if isinstance(msg, (HumanMessage, AIMessage)):
                 messages.append(msg)
@@ -90,12 +107,10 @@ class ExecutionAgent(BaseAgent):
             gemini_key = state.get("gemini_api_key", "")
 
             if provider == "gemini" and gemini_key and streaming_callback:
-                # Use direct Google GenAI SDK for true token-by-token streaming
                 full_response = await _stream_gemini_direct(
                     messages, gemini_key, model_name, streaming_callback
                 )
             else:
-                # Fallback to LangChain for OpenAI/Ollama
                 llm = get_llm_from_state(state, temperature=0.7, streaming=True)
                 if streaming_callback:
                     async for chunk in llm.astream(messages):
@@ -119,6 +134,11 @@ class ExecutionAgent(BaseAgent):
                     "- **Switch to a different model** from the dropdown above\n"
                     "- **Wait for quota reset** (resets daily)\n"
                     "- **Upgrade your API key** to a paid plan"
+                )
+            elif "503" in err_str or "unavailable" in err_str.lower():
+                error_msg = (
+                    f"⚠️ **All models are temporarily overloaded.**\n\n"
+                    "Please wait a few seconds and try again."
                 )
             else:
                 error_msg = (
