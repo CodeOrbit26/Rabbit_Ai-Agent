@@ -1200,10 +1200,17 @@ html:not([data-theme="dark"]) .welcome-greeting-logo img {
 
 .message-assistant {
   justify-content: flex-start;
+  width: 100%;
+}
+
+.message-assistant .message-wrapper {
+  max-width: 100%;
+  width: 100%;
 }
 
 .message-assistant .message-content {
   max-width: 100%;
+  width: 100%;
   flex: 1;
 }
 

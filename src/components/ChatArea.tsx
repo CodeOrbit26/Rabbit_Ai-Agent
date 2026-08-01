@@ -368,10 +368,12 @@ export default function ChatArea({
                 {/* Streaming message */}
                 {isStreaming && streamingContent && (
                   <div className="message message-assistant">
-                    <div className="message-content">
-                      <div className="message-text">
-                        <span dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }} />
-                        <span className="streaming-cursor" />
+                    <div className="message-wrapper">
+                      <div className="message-content">
+                        <div className="message-text">
+                          <span dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }} />
+                          <span className="streaming-cursor" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -380,11 +382,13 @@ export default function ChatArea({
                 {/* Typing indicator */}
                 {isStreaming && !streamingContent && (
                   <div className="message message-assistant">
-                    <div className="message-content">
-                      <div className="typing-indicator">
-                        <div className="typing-dot" />
-                        <div className="typing-dot" />
-                        <div className="typing-dot" />
+                    <div className="message-wrapper">
+                      <div className="message-content">
+                        <div className="typing-indicator">
+                          <div className="typing-dot" />
+                          <div className="typing-dot" />
+                          <div className="typing-dot" />
+                        </div>
                       </div>
                     </div>
                   </div>
