@@ -610,6 +610,18 @@ export default function App() {
         onStop={handleStop}
         chatError={chatError}
         onOpenSearch={() => setSearchOpen(true)}
+        onAnswerMCQ={(messageId, answer) => {
+          setChats(prev => prev.map(c => {
+            if (c.id !== activeChatId) return c;
+            const updatedMessages = c.messages.map(m => {
+              if (m.id === messageId) {
+                return { ...m, mcqAnswer: answer };
+              }
+              return m;
+            });
+            return { ...c, messages: updatedMessages, updatedAt: Date.now() };
+          }));
+        }}
         ollamaUrl={ollamaUrl}
         ollamaModel={ollamaModel}
         onSelectOllamaModel={setOllamaModel}

@@ -1,3 +1,22 @@
+export interface MCQOption {
+  id: string;
+  label: string;
+}
+
+export interface MCQQuestion {
+  type: 'question';
+  question: string;
+  selection?: 'single' | 'multi';
+  options: MCQOption[];
+  allow_custom_input?: boolean;
+}
+
+export interface MCQAnswer {
+  selectedIds: string[];
+  selectedLabels: string[];
+  customInput?: string;
+}
+
 export interface MessageVariant {
   content: string;
   timestamp: number;
@@ -8,6 +27,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  mcqAnswer?: MCQAnswer;
   variants?: MessageVariant[];
   variantIndex?: number;
 }

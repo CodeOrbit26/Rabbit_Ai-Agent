@@ -3,11 +3,13 @@ import {
   Copy, ThumbsUp, ThumbsDown, RotateCcw, ImagePlus, Pencil, Globe,
   SquarePen, AlertTriangle, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
-import type { Chat, ModelId } from '../types';
+import type { Chat, ModelId, MCQAnswer } from '../types';
 import { renderMarkdown } from '../utils/markdown';
+import { parseMCQFromContent } from '../utils/mcq';
 import { loadSettings } from '../utils/storage';
 import ModelSelector from './ModelSelector';
 import MessageInput from './MessageInput';
+import { MCQCard } from './MCQCard';
 
 interface ChatAreaProps {
   chat: Chat | null;
@@ -25,6 +27,7 @@ interface ChatAreaProps {
   onStop: () => void;
   chatError: string | null;
   onOpenSearch: () => void;
+  onAnswerMCQ?: (messageId: string, answer: MCQAnswer) => void;
   ollamaUrl?: string;
   ollamaModel?: string;
   onSelectOllamaModel?: (model: string) => void;
@@ -125,7 +128,7 @@ function formatMessageDate(timestamp: number): string {
 
 export default function ChatArea({
   chat, selectedModel, onSelectModel, onSend, onRegenerate, onEditUserMessage, onSwitchVariant, isStreaming, streamingContent,
-  sidebarOpen, onToggleSidebar, onNewChat, onStop, chatError, onOpenSearch,
+  sidebarOpen, onToggleSidebar, onNewChat, onStop, chatError, onOpenSearch, onAnswerMCQ,
   ollamaUrl, ollamaModel, onSelectOllamaModel
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -253,13 +256,39 @@ export default function ChatArea({
                               </button>
                             </div>
                           </div>
+                        ) : msg.role === 'assistant' ? (
+                          (() => {
+                            const parsed = parseMCQFromContent(msg.content);
+                            return (
+                              <>
+                                {parsed.text && (
+                                  <div
+                                    className="message-text"
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(parsed.text) }}
+                                  />
+                                )}
+                                {parsed.mcqQuestion && (
+                                  <MCQCard
+                                    question={parsed.mcqQuestion}
+                                    answer={msg.mcqAnswer}
+                                    onAnswer={(selectedLabels, selectedIds, customInput) => {
+                                      const answerObj: MCQAnswer = { selectedIds, selectedLabels, customInput };
+                                      if (onAnswerMCQ) {
+                                        onAnswerMCQ(msg.id, answerObj);
+                                      }
+                                      const selectionStr = selectedLabels.join(', ');
+                                      onSend(selectionStr);
+                                    }}
+                                  />
+                                )}
+                              </>
+                            );
+                          })()
                         ) : (
                           <div
                             className="message-text"
                             dangerouslySetInnerHTML={{
-                              __html: msg.role === 'assistant'
-                                ? renderMarkdown(msg.content)
-                                : msg.content.replace(/\n/g, '<br/>')
+                              __html: msg.content.replace(/\n/g, '<br/>')
                             }}
                           />
                         )}
@@ -370,10 +399,22 @@ export default function ChatArea({
                   <div className="message message-assistant">
                     <div className="message-wrapper">
                       <div className="message-content">
-                        <div className="message-text">
-                          <span dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }} />
-                          <span className="streaming-cursor" />
-                        </div>
+                        {(() => {
+                          const parsed = parseMCQFromContent(streamingContent);
+                          return (
+                            <>
+                              {parsed.text && (
+                                <div className="message-text">
+                                  <span dangerouslySetInnerHTML={{ __html: renderMarkdown(parsed.text) }} />
+                                  <span className="streaming-cursor" />
+                                </div>
+                              )}
+                              {parsed.mcqQuestion && (
+                                <MCQCard question={parsed.mcqQuestion} disabled={true} />
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
