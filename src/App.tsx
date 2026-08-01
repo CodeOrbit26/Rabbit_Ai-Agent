@@ -622,6 +622,18 @@ export default function App() {
             return { ...c, messages: updatedMessages, updatedAt: Date.now() };
           }));
         }}
+        onAnswerFlow={(messageId, flowAnswers) => {
+          setChats(prev => prev.map(c => {
+            if (c.id !== activeChatId) return c;
+            const updatedMessages = c.messages.map(m => {
+              if (m.id === messageId) {
+                return { ...m, flowAnswers, isFlowCompleted: true };
+              }
+              return m;
+            });
+            return { ...c, messages: updatedMessages, updatedAt: Date.now() };
+          }));
+        }}
         ollamaUrl={ollamaUrl}
         ollamaModel={ollamaModel}
         onSelectOllamaModel={setOllamaModel}

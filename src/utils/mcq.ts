@@ -1,47 +1,98 @@
-import type { MCQQuestion } from '../types';
+import type { MCQQuestion, ClarificationFlow, FlowQuestion } from '../types';
 
-export interface ParsedMCQResult {
+export interface ParsedPayloadResult {
   text: string;
   mcqQuestion: MCQQuestion | null;
+  clarificationFlow: ClarificationFlow | null;
 }
 
 /**
- * Parses assistant message content to detect and extract an embedded MCQ question JSON block.
+ * Standardize options array so simple string options ["Option A", "Option B"]
+ * become [{ id: "option_a", label: "Option A" }].
  */
-export function parseMCQFromContent(content: string): ParsedMCQResult {
-  if (!content) return { text: '', mcqQuestion: null };
+export function normalizeFlowQuestion(q: any, idx: number): FlowQuestion {
+  const qId = q.id || `q_${idx + 1}`;
+  const options = Array.isArray(q.options)
+    ? q.options.map((opt: any, oIdx: number) => {
+        if (typeof opt === 'string') {
+          const optId = opt.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `opt_${oIdx + 1}`;
+          return { id: optId, label: opt };
+        } else if (opt && typeof opt === 'object') {
+          return { id: opt.id || `opt_${oIdx + 1}`, label: opt.label || opt.id || `Option ${oIdx + 1}` };
+        }
+        return { id: `opt_${oIdx + 1}`, label: String(opt) };
+      })
+    : [];
 
-  // Try matching ```json { "type": "question" ... } ``` block
-  const jsonFenceRegex = /```(?:json)?\s*(\{\s*"type"\s*:\s*"question"[\s\S]*?\})\s*```/i;
+  return {
+    id: qId,
+    question: q.question || 'Please clarify your requirement:',
+    subtitle: q.subtitle || q.description,
+    selection: (q.selection === 'multi' || q.selection === 'multiple') ? 'multi' : 'single',
+    options,
+    allow_custom_input: q.allow_custom_input !== false,
+  };
+}
+
+/**
+ * Parses assistant message content to detect and extract embedded MCQ or ClarificationFlow JSON blocks.
+ */
+export function parsePayloadFromContent(content: string): ParsedPayloadResult {
+  if (!content) return { text: '', mcqQuestion: null, clarificationFlow: null };
+
+  // 1. Try matching ```json { ... } ``` code blocks
+  const jsonFenceRegex = /```(?:json)?\s*(\{\s*"type"\s*:\s*"(?:clarification_flow|question)"[\s\S]*?\})\s*```/i;
   const fenceMatch = content.match(jsonFenceRegex);
 
   if (fenceMatch) {
     try {
       const parsed = JSON.parse(fenceMatch[1]);
-      if (parsed && parsed.type === 'question' && Array.isArray(parsed.options)) {
+      if (parsed && parsed.type === 'clarification_flow' && Array.isArray(parsed.questions)) {
         const text = content.replace(fenceMatch[0], '').trim();
-        return { text, mcqQuestion: parsed as MCQQuestion };
+        const flow: ClarificationFlow = {
+          type: 'clarification_flow',
+          title: parsed.title,
+          questions: parsed.questions.map((q: any, idx: number) => normalizeFlowQuestion(q, idx)),
+        };
+        return { text, mcqQuestion: null, clarificationFlow: flow };
+      } else if (parsed && parsed.type === 'question' && Array.isArray(parsed.options)) {
+        const text = content.replace(fenceMatch[0], '').trim();
+        return { text, mcqQuestion: parsed as MCQQuestion, clarificationFlow: null };
       }
     } catch {
-      // Invalid JSON, fall through
+      // Ignore JSON parse errors
     }
   }
 
-  // Try matching raw JSON object containing "type": "question"
-  const rawJsonRegex = /(\{\s*"type"\s*:\s*"question"[\s\S]*?\})/;
+  // 2. Try matching raw JSON object containing "type": "clarification_flow" or "type": "question"
+  const rawJsonRegex = /(\{\s*"type"\s*:\s*"(?:clarification_flow|question)"[\s\S]*?\})/;
   const rawMatch = content.match(rawJsonRegex);
 
   if (rawMatch) {
     try {
       const parsed = JSON.parse(rawMatch[1]);
-      if (parsed && parsed.type === 'question' && Array.isArray(parsed.options)) {
+      if (parsed && parsed.type === 'clarification_flow' && Array.isArray(parsed.questions)) {
         const text = content.replace(rawMatch[1], '').trim();
-        return { text, mcqQuestion: parsed as MCQQuestion };
+        const flow: ClarificationFlow = {
+          type: 'clarification_flow',
+          title: parsed.title,
+          questions: parsed.questions.map((q: any, idx: number) => normalizeFlowQuestion(q, idx)),
+        };
+        return { text, mcqQuestion: null, clarificationFlow: flow };
+      } else if (parsed && parsed.type === 'question' && Array.isArray(parsed.options)) {
+        const text = content.replace(rawMatch[1], '').trim();
+        return { text, mcqQuestion: parsed as MCQQuestion, clarificationFlow: null };
       }
     } catch {
-      // Invalid JSON, ignore
+      // Ignore parse errors
     }
   }
 
-  return { text: content, mcqQuestion: null };
+  return { text: content, mcqQuestion: null, clarificationFlow: null };
+}
+
+// Backward compatibility alias
+export function parseMCQFromContent(content: string) {
+  const res = parsePayloadFromContent(content);
+  return { text: res.text, mcqQuestion: res.mcqQuestion };
 }

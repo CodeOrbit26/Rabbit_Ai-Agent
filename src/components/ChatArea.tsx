@@ -3,13 +3,14 @@ import {
   Copy, ThumbsUp, ThumbsDown, RotateCcw, ImagePlus, Pencil, Globe,
   SquarePen, AlertTriangle, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
-import type { Chat, ModelId, MCQAnswer } from '../types';
+import type { Chat, ModelId, MCQAnswer, ClarificationAnswers } from '../types';
 import { renderMarkdown } from '../utils/markdown';
-import { parseMCQFromContent } from '../utils/mcq';
+import { parsePayloadFromContent } from '../utils/mcq';
 import { loadSettings } from '../utils/storage';
 import ModelSelector from './ModelSelector';
 import MessageInput from './MessageInput';
 import { MCQCard } from './MCQCard';
+import { ClarificationFlowCard } from './ClarificationFlowCard';
 
 interface ChatAreaProps {
   chat: Chat | null;
@@ -28,6 +29,7 @@ interface ChatAreaProps {
   chatError: string | null;
   onOpenSearch: () => void;
   onAnswerMCQ?: (messageId: string, answer: MCQAnswer) => void;
+  onAnswerFlow?: (messageId: string, flowAnswers: ClarificationAnswers) => void;
   ollamaUrl?: string;
   ollamaModel?: string;
   onSelectOllamaModel?: (model: string) => void;
@@ -128,7 +130,7 @@ function formatMessageDate(timestamp: number): string {
 
 export default function ChatArea({
   chat, selectedModel, onSelectModel, onSend, onRegenerate, onEditUserMessage, onSwitchVariant, isStreaming, streamingContent,
-  sidebarOpen, onToggleSidebar, onNewChat, onStop, chatError, onOpenSearch, onAnswerMCQ,
+  sidebarOpen, onToggleSidebar, onNewChat, onStop, chatError, onOpenSearch, onAnswerMCQ, onAnswerFlow,
   ollamaUrl, ollamaModel, onSelectOllamaModel
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -258,13 +260,26 @@ export default function ChatArea({
                           </div>
                         ) : msg.role === 'assistant' ? (
                           (() => {
-                            const parsed = parseMCQFromContent(msg.content);
+                            const parsed = parsePayloadFromContent(msg.content);
                             return (
                               <>
                                 {parsed.text && (
                                   <div
                                     className="message-text"
                                     dangerouslySetInnerHTML={{ __html: renderMarkdown(parsed.text) }}
+                                  />
+                                )}
+                                {parsed.clarificationFlow && (
+                                  <ClarificationFlowCard
+                                    flow={parsed.clarificationFlow}
+                                    savedAnswers={msg.flowAnswers}
+                                    isCompleted={msg.isFlowCompleted}
+                                    onComplete={(answers, summaryText) => {
+                                      if (onAnswerFlow) {
+                                        onAnswerFlow(msg.id, answers);
+                                      }
+                                      onSend(summaryText);
+                                    }}
                                   />
                                 )}
                                 {parsed.mcqQuestion && (
@@ -400,7 +415,7 @@ export default function ChatArea({
                     <div className="message-wrapper">
                       <div className="message-content">
                         {(() => {
-                          const parsed = parseMCQFromContent(streamingContent);
+                          const parsed = parsePayloadFromContent(streamingContent);
                           return (
                             <>
                               {parsed.text && (
@@ -408,6 +423,9 @@ export default function ChatArea({
                                   <span dangerouslySetInnerHTML={{ __html: renderMarkdown(parsed.text) }} />
                                   <span className="streaming-cursor" />
                                 </div>
+                              )}
+                              {parsed.clarificationFlow && (
+                                <ClarificationFlowCard flow={parsed.clarificationFlow} disabled={true} />
                               )}
                               {parsed.mcqQuestion && (
                                 <MCQCard question={parsed.mcqQuestion} disabled={true} />

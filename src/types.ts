@@ -6,7 +6,7 @@ export interface MCQOption {
 export interface MCQQuestion {
   type: 'question';
   question: string;
-  selection?: 'single' | 'multi';
+  selection?: 'single' | 'multi' | 'multiple';
   options: MCQOption[];
   allow_custom_input?: boolean;
 }
@@ -15,6 +15,35 @@ export interface MCQAnswer {
   selectedIds: string[];
   selectedLabels: string[];
   customInput?: string;
+}
+
+export interface FlowQuestionOption {
+  id: string;
+  label: string;
+}
+
+export interface FlowQuestion {
+  id: string;
+  question: string;
+  subtitle?: string;
+  selection?: 'single' | 'multi' | 'multiple';
+  options: (string | FlowQuestionOption)[];
+  allow_custom_input?: boolean;
+}
+
+export interface ClarificationFlow {
+  type: 'clarification_flow';
+  title?: string;
+  questions: FlowQuestion[];
+}
+
+export interface ClarificationAnswers {
+  [questionId: string]: {
+    questionId: string;
+    questionText: string;
+    selectedLabels: string[];
+    customInput?: string;
+  };
 }
 
 export interface MessageVariant {
@@ -28,6 +57,8 @@ export interface Message {
   content: string;
   timestamp: number;
   mcqAnswer?: MCQAnswer;
+  flowAnswers?: ClarificationAnswers;
+  isFlowCompleted?: boolean;
   variants?: MessageVariant[];
   variantIndex?: number;
 }
