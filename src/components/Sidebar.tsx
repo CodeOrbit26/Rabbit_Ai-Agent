@@ -21,7 +21,7 @@ interface SidebarProps {
 
 function OpenAILogo() {
   return (
-    <img src="/logo.png" alt="Aria Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+    <img src="/logo.png" alt="Qova Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
   );
 }
 
@@ -66,10 +66,16 @@ export default function Sidebar({
     <aside className={`sidebar ${isOpen ? '' : 'collapsed'}`}>
       {/* Header */}
       <div className="sidebar-header">
-        <div className="sidebar-logo-wrapper" onClick={onToggle} style={{ cursor: 'pointer' }}>
+        <div className="sidebar-logo-wrapper" onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div className="sidebar-logo-icon">
             <OpenAILogo />
           </div>
+          {isOpen && (
+            <div className="sidebar-brand-text" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Qova</span>
+              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 500, letterSpacing: '0.2px' }}>QuantaForge AI</span>
+            </div>
+          )}
           <div className="sidebar-toggle-icon-collapsed">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />

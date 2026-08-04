@@ -51,7 +51,7 @@ export default function SettingsModal({
 
   if (!isOpen) return null;
 
-  const themeLabel = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System';
+  const themeLabel = theme === 'quantaforge' ? 'QuantaForge Amber' : theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System';
 
   return (
     <div className="settings-overlay" onClick={onClose}>
@@ -112,13 +112,13 @@ export default function SettingsModal({
                       <>
                         <div className="dropdown-overlay" onClick={() => setShowAppearanceDropdown(false)} />
                         <div className="settings-dropdown-menu">
-                          {(['system', 'dark', 'light'] as Theme[]).map(t => (
+                          {(['system', 'quantaforge', 'dark', 'light'] as Theme[]).map(t => (
                             <button
                               key={t}
                               className="settings-dropdown-option"
                               onClick={() => { onChangeTheme(t); setShowAppearanceDropdown(false); }}
                             >
-                              <span>{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+                              <span>{t === 'quantaforge' ? 'QuantaForge Amber' : t.charAt(0).toUpperCase() + t.slice(1)}</span>
                               {theme === t && <Check className="check" size={16} />}
                             </button>
                           ))}
@@ -172,7 +172,7 @@ export default function SettingsModal({
                   <div>
                     <div className="settings-row-label">Higher intelligence</div>
                     <div className="settings-row-desc">
-                      Aria can automatically use a higher intelligence setting when you ask a complex question.
+                      Qova can automatically use a higher intelligence setting when you ask a complex question.
                     </div>
                   </div>
                   <button

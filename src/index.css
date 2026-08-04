@@ -141,6 +141,72 @@
   --model-logo-border: rgba(255, 255, 255, 0.12);
 }
 
+[data-theme="quantaforge"] {
+  --sidebar-bg: #090a0f;
+  --sidebar-hover: #141722;
+  --sidebar-active: #1c2030;
+  --sidebar-border: rgba(245, 158, 11, 0.18);
+  --sidebar-text: #f8fafc;
+  --sidebar-text-secondary: #94a3b8;
+  --sidebar-new-chat-bg: rgba(245, 158, 11, 0.12);
+
+  --main-bg: #0b0c10;
+  --main-surface: #12141c;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-placeholder: #64748b;
+
+  --input-bg: #12141c;
+  --input-border: rgba(245, 158, 11, 0.25);
+  --input-focus-border: #f59e0b;
+
+  --border-color: rgba(245, 158, 11, 0.2);
+  --border-light: rgba(245, 158, 11, 0.12);
+
+  --msg-user-bg: #161924;
+  --msg-assistant-bg: transparent;
+
+  --btn-primary-bg: #f59e0b;
+  --btn-primary-text: #090a0f;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-hover: #1e2230;
+
+  --modal-bg: #11131a;
+  --modal-overlay: rgba(0, 0, 0, 0.85);
+  --modal-sidebar-bg: #090a0f;
+  --modal-sidebar-active: #1a1e2b;
+  --modal-border: rgba(245, 158, 11, 0.25);
+
+  --popup-bg: #12141c;
+  --popup-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 12px rgba(245, 158, 11, 0.2);
+  --popup-hover: #1c2030;
+  --popup-border: rgba(245, 158, 11, 0.22);
+
+  --code-bg: #090a0f;
+  --code-header-bg: #141722;
+  --code-text: #f8fafc;
+
+  --accent-color: #f59e0b;
+  --accent-blue: #f59e0b;
+  --accent-green: #10b981;
+
+  --scrollbar-thumb: #d97706;
+  --scrollbar-track: transparent;
+
+  --toggle-on-bg: #f59e0b;
+  --toggle-off-bg: #334155;
+
+  --chip-bg: rgba(245, 158, 11, 0.08);
+  --chip-border: rgba(245, 158, 11, 0.22);
+  --chip-hover: rgba(245, 158, 11, 0.16);
+
+  --sidebar-gradient: linear-gradient(180deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.05) 45%, transparent 70%);
+  --model-logo-bg: #090a0f;
+  --model-logo-border: rgba(245, 158, 11, 0.3);
+}
+
 html, body, #root {
   height: 100%;
   overflow: hidden;

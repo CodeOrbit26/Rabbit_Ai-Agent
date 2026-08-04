@@ -41,18 +41,18 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("🚀 Starting Aria backend …")
+    logger.info("🚀 Starting Qova — QuantaForge Autonomous Intelligence backend …")
     await db.connect()
     await vector_store.initialize()
     logger.info("✅ Database and vector store ready")
     yield
     # Shutdown
     await db.close()
-    logger.info("👋 Aria backend shut down")
+    logger.info("👋 Qova backend shut down")
 
 
 app = FastAPI(
-    title="Aria Agentic AI Backend",
+    title="Qova — QuantaForge Autonomous Intelligence Backend",
     version="2.0.0",
     description="LangGraph-powered agentic backend with 3-layer memory",
     lifespan=lifespan,
@@ -73,7 +73,7 @@ app.add_middleware(
 async def root():
     return {
         "status": "online",
-        "system": "Aria Agentic AI",
+        "system": "Qova — QuantaForge Autonomous Intelligence",
         "version": "2.0.0",
         "graph_nodes": [
             "memory_retrieval", "context_builder", "intent_analysis",

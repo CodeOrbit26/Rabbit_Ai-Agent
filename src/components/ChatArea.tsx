@@ -39,7 +39,7 @@ interface ChatAreaProps {
 
 function OpenAILogoSmall() {
   return (
-    <img src="/logo.png" alt="Aria Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+    <img src="/logo.png" alt="Qova Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
   );
 }
 
@@ -193,7 +193,7 @@ export default function ChatArea({
             <div className="welcome-container">
               <h1 className="welcome-greeting">
                 <div className="welcome-greeting-logo">
-                  <img src="/logo.png" alt="Aria Logo" />
+                  <img src="/logo.png" alt="Qova Logo" />
                 </div>
                 <span>{greeting}</span>
               </h1>

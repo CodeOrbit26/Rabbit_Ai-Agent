@@ -86,7 +86,7 @@ export interface ApiKeys {
   openai: string;
 }
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'quantaforge' | 'system';
 export type ModelId = 'auto' | 'gemini-3.6-flash' | 'gemini-3.5-pro' | 'gemini-2.0-flash' | 'gemini-flash' | 'gemini-pro' | 'gpt-4o' | 'gpt-4o-mini' | 'ollama';
 
 export interface ModelOption {

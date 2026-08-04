@@ -117,8 +117,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           <div className="voice-header-brand">
             <Sparkles size={16} className="voice-sparkle-icon" />
             <div className="voice-title-group">
-              <span className="voice-brand-name">Aria</span>
-              <span className="voice-lang-sub">Hindi · हिन्दी</span>
+              <span className="voice-brand-name">Qova</span>
+              <span className="voice-lang-sub">QuantaForge Autonomous Intelligence</span>
             </div>
           </div>
           <button type="button" className="voice-close-icon-btn" onClick={onClose} title="Close Voice Mode">
@@ -155,7 +155,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             )}
             {assistantTranscript && (
               <div className="voice-transcript-item assistant">
-                <span className="transcript-role">Aria:</span>
+                <span className="transcript-role">Qova:</span>
                 <span className="transcript-text">{assistantTranscript}</span>
               </div>
             )}

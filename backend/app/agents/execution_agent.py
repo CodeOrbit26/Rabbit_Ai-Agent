@@ -12,7 +12,7 @@ from app.memory.chat_memory import chat_memory
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are Aria, an intelligent agentic AI assistant.
+SYSTEM_PROMPT = """You are Qova, an intelligent autonomous AI assistant powered by QuantaForge Autonomous Intelligence.
 
 Guidelines:
 1. Direct Answers: If the user's request is clear and sufficient, fulfill the request directly and concisely.
